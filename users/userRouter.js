@@ -1,12 +1,13 @@
 const express = require('express');
 
 const router = express.Router();
-const db = require('./userDb');
+const userDb = require('./userDb');
+const postDb = require('../posts/postDb');
 
-router.post('/', (req, res) => {
+router.post('/', validateUser, (req, res) => {
   const newUser = req.body;
 
-  db.insert(newUser)
+  userDb.insert(newUser)
     .then(userAdded => {
       res.status(201).json(userAdded);
     })
@@ -15,18 +16,11 @@ router.post('/', (req, res) => {
     })
 });
 
-router.post('/:id/posts', (req, res) => {
-  const id = req.params.id;
+// Not working..
+router.post('/:id/posts', validateUserId, validatePost, (req, res) => {
   const postBody = req.body;
 
-  db.getById(id)
-    .then(user => {
-      if(!user) {
-        res.status(404).json({ message: 'Unable to find user by that ID' });
-      }
-    })
-
-  db.insert(postBody)
+  postDb.insert(postBody)
     .then(post => {
       res.status(201).json(post);
     })
@@ -36,7 +30,7 @@ router.post('/:id/posts', (req, res) => {
 });
 
 router.get('/', (req, res) => {
-  db.get()
+  userDb.get()
     .then(users => {
       res.status(200).json(users);
     })
@@ -45,26 +39,22 @@ router.get('/', (req, res) => {
     })
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', validateUserId, (req, res) => {
   const id = req.params.id;
 
-  db.getById(id)
+  userDb.getById(id)
     .then(user => {
-      if (user) {
         res.status(200).json(user);
-      } else {
-        res.status(404).json({ message: 'Unable to find user by that ID' });
-      }
     })
     .catch(error => {
       res.status(500).json({ messege: 'Unable to retrieve user' });
     })
 });
 
-router.get('/:id/posts', (req, res) => {
+router.get('/:id/posts', validateUserId, (req, res) => {
   const id = req.params.id;
 
-  db.getUserPosts(id)
+  userDb.getUserPosts(id)
     .then(post => {
       res.status(200).json(post);
     })
@@ -73,33 +63,24 @@ router.get('/:id/posts', (req, res) => {
     })
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', validateUserId,  (req, res) => {
   const id = req.params.id;
 
-  db.remove(id)
+  userDb.remove(id)
     .then(deleted => {
-      if (deleted) {
         res.status(200).json(deleted);
-      } else {
-        res.status(404).json({ message: 'Unable to find user by that ID' });
-      }
     })
     .catch(error => {
       res.status(500).json({ message: 'Unable to delete user' });
     })
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', validateUserId, (req, res) => {
   const userToUpdate = req.body;
   const id = req.params.id;
 
-  db.getById(id).then(post => {
-    if (!post) {
-      res.status(404).json({ message: 'Unable to find user by that ID' });
-    }
-  })
   if (userToUpdate.name) {
-    db.update(id, userToUpdate)
+    userDb.update(id, userToUpdate)
       .then(updated => {
         res.status(200).json(updated);
       })
@@ -114,7 +95,18 @@ router.put('/:id', (req, res) => {
 //custom middleware
 
 function validateUserId(req, res, next) {
-  // do your magic!
+  const id = req.params.id;
+
+  userDb.getById(id)
+    .then(user => {
+      if(!user) {
+        console.log(user)
+        res.status(404).json({ message: 'Unable to find user by that ID' });
+      }
+    })
+
+    next();
+  
 }
 
 function validateUser(req, res, next) {
